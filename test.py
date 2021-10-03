@@ -11,8 +11,15 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
+
+def comp_int(num1, num2):
+    if (num1 < num2):
+        return int(num1), int(num2)
+    else :
+        return int(num2), int(num1)
+    
 # For static images:
-IMAGE_FILES = ["./hand_img2.jpg"]
+IMAGE_FILES = ["./hand2_img.jpg"]
 with mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,
@@ -61,7 +68,7 @@ with mp_hands.Hands(
       itx_ = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].x * image_width
       ity_ = hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].y * image_height
       color = ( 255,0,0)
-      
+      '''
       if(idx_ < itx_):
           x1 = int(idx_)
           x2 = int(itx_)
@@ -75,21 +82,23 @@ with mp_hands.Hands(
       else:
           y1 = int(ity_)
           y2 = int(idy_)
-          
+      '''
+      
+      
       img_test = cv2.line(img_test,(int(idx_),int(idy_)),(int(itx_),int(ity_)),color,5)
      
       
       cv2.imshow('test',img_test)
       cv2.waitKey(0)
       cv2.destroyAllWindows()
-      '''
+      
       mp_drawing.draw_landmarks(
           annotated_image,
           hand_landmarks,
           mp_hands.HAND_CONNECTIONS,
           mp_drawing_styles.get_default_hand_landmarks_style(),
           mp_drawing_styles.get_default_hand_connections_style())
-      '''
+      
       
     cv2.imwrite(
         './' + str(idx) + '.png', cv2.flip(annotated_image, 1))

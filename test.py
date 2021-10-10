@@ -51,7 +51,7 @@ def isPalm(coord, hand_):
 finger_tip = [3,7,11,15,19]
 palm_point = [0,2 ,9, 17]
 # For static images:
-IMAGE_FILES = ["./hand_img2.jpg","./hand_img3.jpg","./hand_img4.jpg","./hand_img5.jpg","./hand_img6.jpg","./hand2_img.jpg",]
+IMAGE_FILES = ["./hand_img2.jpg","./hand_img3.jpg","./hand_img4.jpg","./hand_img5.jpg","./hand_img6.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
 with mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,

@@ -16,6 +16,10 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
+
+finger_dip = [3,7,11,15,19] # 각 손가락의 끝부분을 리스트로 관리한다. 
+palm_point = [0,2 ,9, 17]   # 손바닥을 판단하기위한 4개의 지점을 리스트로 관리한다.
+
 # 두 수를 비교하여 작은 값과 큰 값을 구분한다. 
 
 def comp_int(num1, num2):
@@ -52,8 +56,21 @@ def isPalm(coord, hand_):
             return 0
     return 0
 
-finger_tip = [3,7,11,15,19] # 각 손가락의 끝부분을 리스트로 관리한다. 
-palm_point = [0,2 ,9, 17]   # 손바닥을 판단하기위한 4개의 지점을 리스트로 관리한다. 
+# 손가락이 접혀있는지 판단하는 알고리즘이다.  !!! 현재 엄지의 손가락이 접혀있는지 판단할 수가 없다. 
+# 인자로는 손가락 Tip과 Dip 좌표를 받는다. 
+def foldedFinger(coord_tip, coord_dip, rest):
+    coord_tip -= rest
+    coord_dip -= rest
+    folded = []
+    for tip, dip in zip(coord_tip, coord_dip):
+        if (len_line(tip) > len_line(dip)):
+            folded.append(False)
+        else:
+            folded.append(True)
+                
+    return folded
+
+ 
 # For static images:
 IMAGE_FILES = ["./hand_img2.jpg","./hand_img3.jpg","./hand_img4.jpg","./hand_img5.jpg","./hand_img6.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
 with mp_hands.Hands(
@@ -103,14 +120,26 @@ with mp_hands.Hands(
           f'{hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_DIP].y * image_height})'
       )
       '''
+      
+      
       # detecting finter_tips 
-      for i in finger_tip:
-          idx_ = hand_landmarks.landmark[i + 1].x * image_width
-          idy_ = hand_landmarks.landmark[i + 1].y * image_height
-          itx_ = hand_landmarks.landmark[i].x * image_width
-          ity_ = hand_landmarks.landmark[i].y * image_height
+      finger_tip_coord = []
+      finger_dip_coord = []
+      for i in finger_dip:
+          itx_ = hand_landmarks.landmark[i + 1].x * image_width
+          ity_ = hand_landmarks.landmark[i + 1].y * image_height
+          idx_ = hand_landmarks.landmark[i].x * image_width
+          idy_ = hand_landmarks.landmark[i].y * image_height
+          '''
           color = ( 255,0,0)
           img_test = cv2.line(img_test,(int(idx_),int(idy_)),(int(itx_),int(ity_)),color,5)
+          '''
+          # detection finger_fold
+          finger_tip_coord.append([itx_,ity_])
+          finger_dip_coord.append([idx_,idy_])
+      
+      
+          
           
       # detectng palm
       palm_point_coordinate = [];
@@ -135,13 +164,27 @@ with mp_hands.Hands(
       else :
           color = (61,61,204)   # 손바닥인 경우 
       
+      finger_folded = foldedFinger(np.array(finger_tip_coord), np.array(finger_dip_coord), np.array(palm_point_coordinate[0]))
+      print(finger_folded)
       
-      # 테스트용 이미지 그림
+      # 테스트용 이미지 그림 
       img_test = cv2.line(img_test,(int(palm_point_coordinate[0][0]),int(palm_point_coordinate[0][1])),(int(palm_point_coordinate[1][0]),int(palm_point_coordinate[1][1])),color, 5)
       img_test = cv2.line(img_test,(int(palm_point_coordinate[2][0]),int(palm_point_coordinate[2][1])),(int(palm_point_coordinate[1][0]),int(palm_point_coordinate[1][1])),color, 5)
       img_test = cv2.line(img_test,(int(palm_point_coordinate[3][0]),int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[0][0]),int(palm_point_coordinate[0][1])),color, 5)
       img_test = cv2.line(img_test,(int(palm_point_coordinate[3][0]),int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[2][0]),int(palm_point_coordinate[2][1])),color, 5)
       
+      
+      temp_tip = np.array(finger_tip_coord,dtype=int)
+      temp_dip = np.array(finger_dip_coord,dtype=int)
+      for i , ff in enumerate(finger_folded):
+          if(ff):
+              color = (0,153,0)
+          else:
+              color = (255, 128, 0)
+        
+          img_test = cv2.line(img_test,(temp_tip[i][0],temp_tip[i][1]),(temp_dip[i][0],temp_dip[i][1]),color,5)
+      
+      '''
       cv2.imshow('test',img_test)
       cv2.waitKey(0)
       cv2.destroyAllWindows()
@@ -152,7 +195,7 @@ with mp_hands.Hands(
           mp_hands.HAND_CONNECTIONS,
           mp_drawing_styles.get_default_hand_landmarks_style(),
           mp_drawing_styles.get_default_hand_connections_style())
-
+      '''
     '''
     cv2.imwrite(
         './' + str(idx) + '.png', cv2.flip(annotated_image, 1))

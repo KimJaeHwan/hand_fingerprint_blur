@@ -16,6 +16,7 @@ mp_drawing = mp.solutions.drawing_utils
 mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
+# 두 수를 비교하여 작은 값과 큰 값을 구분한다. 
 
 def comp_int(num1, num2):
     if (num1 < num2):
@@ -23,10 +24,13 @@ def comp_int(num1, num2):
     else :
         return int(num2), int(num1)
     
-    
+# 인자로 들어온 배열을 좌표로 하여 원정으로부터 길이를 계산한다. 넘파이 배열을 받으며 다차원 또한 가능하다. 
+
 def len_line(coord):
     return np.sqrt(np.sum(coord*coord))
 
+# 좌표의 회전이동 공식을 이용하여 현재 탐지한 손이 손바닥부분인지 손등 부분인지 확인한다 
+# 손등인경우 0 손바닥인 경우 1을 반환한다. 
 def isPalm(coord, hand_):
     mov_zero = coord - coord[0]
     len_l = len_line(mov_zero[2])
@@ -48,8 +52,8 @@ def isPalm(coord, hand_):
             return 0
     return 0
 
-finger_tip = [3,7,11,15,19]
-palm_point = [0,2 ,9, 17]
+finger_tip = [3,7,11,15,19] # 각 손가락의 끝부분을 리스트로 관리한다. 
+palm_point = [0,2 ,9, 17]   # 손바닥을 판단하기위한 4개의 지점을 리스트로 관리한다. 
 # For static images:
 IMAGE_FILES = ["./hand_img2.jpg","./hand_img3.jpg","./hand_img4.jpg","./hand_img5.jpg","./hand_img6.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
 with mp_hands.Hands(
@@ -122,11 +126,17 @@ with mp_hands.Hands(
       print(palm_point_coordinate)
       
       front = isPalm(np.array(palm_point_coordinate), hand_)
+      '''
+      차후 손바닥 여부를 판단하여 해당 손을 blur처리 할 것인지 결정한다. 
+      또한 손가락의 접힘 정도를 판단하여 blur처리를 하지 않아야할 손가락 또한 구별할 것이다. 
+      '''
       if(front == 0):       # 손바닥 앞면 구분
-          color = (255,102,165)
+          color = (255,102,165) # 손등인경우 
       else :
-          color = (61,61,204)
-          
+          color = (61,61,204)   # 손바닥인 경우 
+      
+      
+      # 테스트용 이미지 그림
       img_test = cv2.line(img_test,(int(palm_point_coordinate[0][0]),int(palm_point_coordinate[0][1])),(int(palm_point_coordinate[1][0]),int(palm_point_coordinate[1][1])),color, 5)
       img_test = cv2.line(img_test,(int(palm_point_coordinate[2][0]),int(palm_point_coordinate[2][1])),(int(palm_point_coordinate[1][0]),int(palm_point_coordinate[1][1])),color, 5)
       img_test = cv2.line(img_test,(int(palm_point_coordinate[3][0]),int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[0][0]),int(palm_point_coordinate[0][1])),color, 5)

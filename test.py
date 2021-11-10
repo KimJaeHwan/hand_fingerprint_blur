@@ -17,8 +17,9 @@ mp_drawing_styles = mp.solutions.drawing_styles
 mp_hands = mp.solutions.hands
 
 
-finger_dip = [3,7,11,15,19] # 각 손가락의 끝부분을 리스트로 관리한다. 
+finger_dip = [3,7,11,15,19] # 각 손가락의 끝부분을 리스트로 관리한다. (엄지, 검지, 중지, 약지, 소지)
 palm_point = [0,2 ,9, 17]   # 손바닥을 판단하기위한 4개의 지점을 리스트로 관리한다.
+thumb_folded = 0
 
 # 두 수를 비교하여 작은 값과 큰 값을 구분한다. 
 
@@ -34,15 +35,18 @@ def len_line(coord):
     return np.sqrt(np.sum(coord*coord))
 
 # 좌표의 회전이동 공식을 이용하여 현재 탐지한 손이 손바닥부분인지 손등 부분인지 확인한다 
-# 손등인경우 0 손바닥인 경우 1을 반환한다. 
+# 손등인경우 0 손바닥인 경우 1을 반환한다.
+
+
+
 def isPalm(coord, hand_):
     mov_zero = coord - coord[0]
     len_l = len_line(mov_zero[2])
     sin = -(mov_zero[2][1]/len_l)
     cos = mov_zero[2][0]/len_l
-    y2 = coord[1][0]*sin + coord[1][1]*cos
-    y17 = coord[3][0]*sin + coord[3][1]*cos
-    
+    y2 = coord[1][0]*sin + coord[1][1]*cos          #thumb_mcp
+    y17 = coord[3][0]*sin + coord[3][1]*cos         #pinky_mcp
+    # 4번 좌표를 받아 회전공식적용 y좌표를 y2와 비교 , 해당 손에 따라 사용
     print(hand_)
     if (y2 < y17):          # 엄지가 아래
         if (hand_ == 0):    # 왼손인 경우
@@ -55,6 +59,28 @@ def isPalm(coord, hand_):
         else :              # 오른손인 경우
             return 0
     return 0
+
+def thumb_folded(coord, hand_, cood_thumb_tip, cood_thumb_dip):
+    mov_zero = coord - coord[0]
+    len_l = len_line(mov_zero[2])
+    sin = -(mov_zero[2][1]/len_l)
+    cos = mov_zero[2][0]/len_l
+    y2 = coord[1][0]*sin + coord[1][1]*cos          #thumb_mcp
+    # 4번 좌표를 받아 회전공식적용 y좌표를 y2와 비교 , 해당 손에 따라 사용
+    y4 = cood_thumb_tip[0]*sin + cood_thumb_tip[1]*cos
+
+    print(hand_)
+    if (y2 < y4):          # 엄지가 관절보다 위
+        if (hand_ == 0):    # 왼손인 경우
+            return False        # 접혀 있음
+        else :              # 오른손인 경우
+            return True
+    else :                  # 엄지가 관절보다 아래
+        if (hand_ == 0):    # 왼손인 경우
+            return True
+        else :              # 오른손인 경우
+            return False
+    return False
 
 # 손가락이 접혀있는지 판단하는 알고리즘이다.  !!! 현재 엄지의 손가락이 접혀있는지 판단할 수가 없다. 
 # 인자로는 손가락 Tip과 Dip 좌표를 받는다. 
@@ -71,8 +97,20 @@ def foldedFinger(coord_tip, coord_dip, rest):
     return folded
 
  
+def draw_ellipse(image, coord_tip, coord_dip, color):
+    cood_med = tuple((np.array(coord_tip) + np.array(coord_dip))//2)
+    len_l = int(len_line(np.array(coord_tip) - np.array(coord_dip))/2)
+    len_2 = int(len_l//2)
+    cood_temp= np.array(coord_tip) - np.array(coord_dip)
+    cood_angle = int(np.arctan2(cood_temp[1],cood_temp[0]) * 180 / math.pi)
+    
+    image = cv2.ellipse(image,cood_med,(len_l,len_2),cood_angle,0,360,color,-1)
+    
+    return image
+
+
 # For static images:
-IMAGE_FILES = ["./hand_img2.jpg","./hand_img3.jpg","./hand_img4.jpg","./hand_img5.jpg","./hand_img6.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
+IMAGE_FILES = ["./hand_img3.jpg","./hand_img4.jpg","./hand_img6.jpg","./hand_img5.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
 with mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,
@@ -162,9 +200,11 @@ with mp_hands.Hands(
       if(front == 0):       # 손바닥 앞면 구분
           color = (255,102,165) # 손등인경우 
       else :
-          color = (61,61,204)   # 손바닥인 경우 
-      
-      finger_folded = foldedFinger(np.array(finger_tip_coord), np.array(finger_dip_coord), np.array(palm_point_coordinate[0]))
+          color = (61,61,204)   # 손바닥인 경우
+
+      finger_folded = foldedFinger(np.array(finger_tip_coord), np.array(finger_dip_coord),np.array(palm_point_coordinate[0]))
+
+      finger_folded[0] = thumb_folded(np.array(palm_point_coordinate), hand_, np.array(finger_tip_coord[0]),np.array(finger_dip_coord[0]))
       print(finger_folded)
       
       # 테스트용 이미지 그림 
@@ -176,14 +216,18 @@ with mp_hands.Hands(
       
       temp_tip = np.array(finger_tip_coord,dtype=int)
       temp_dip = np.array(finger_dip_coord,dtype=int)
+      #손가락 굽힘 확인
+
+
       for i , ff in enumerate(finger_folded):
-          if(ff):
+          if(ff):   #손가락 굽힘
               color = (0,153,0)
-          else:
+          else:     #안굽힘
               color = (255, 128, 0)
+              #color = (0,0,0)
         
           img_test = cv2.line(img_test,(temp_tip[i][0],temp_tip[i][1]),(temp_dip[i][0],temp_dip[i][1]),color,5)
-      
+          #img_test = draw_ellipse(img_test,(temp_tip[i][0],temp_tip[i][1]),(temp_dip[i][0],temp_dip[i][1]),color)
       '''
       cv2.imshow('test',img_test)
       cv2.waitKey(0)

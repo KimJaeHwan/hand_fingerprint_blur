@@ -37,7 +37,20 @@ def len_line(coord):
 # 좌표의 회전이동 공식을 이용하여 현재 탐지한 손이 손바닥부분인지 손등 부분인지 확인한다 
 # 손등인경우 0 손바닥인 경우 1을 반환한다.
 
+def finger_print_blur(img_o, img):
+    img_g = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    img_o_g = cv2.cvtColor(img_o, cv2.COLOR_BGR2GRAY)
 
+    cv2.waitKey(0)
+
+    result = (img_g != img_o_g).astype(np.uint8)
+    blur_img = cv2.blur(img_o, (5, 5))
+    result = cv2.merge([result, result, result])
+    final = blur_img * result
+
+    f_final = final + img
+
+    return f_final
 
 def isPalm(coord, hand_):
     mov_zero = coord - coord[0]
@@ -104,13 +117,13 @@ def draw_ellipse(image, coord_tip, coord_dip, color):
     cood_temp= np.array(coord_tip) - np.array(coord_dip)
     cood_angle = int(np.arctan2(cood_temp[1],cood_temp[0]) * 180 / math.pi)
     
-    image = cv2.ellipse(image,cood_med,(len_l,len_2),cood_angle,0,360,color,-1)
-    
-    return image
+    return cv2.ellipse(image,cood_med,(len_l,len_2),cood_angle,0,360,color,-1)
+
 
 
 # For static images:
 IMAGE_FILES = ["./hand_img3.jpg","./hand_img4.jpg","./hand_img6.jpg","./hand_img5.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
+#IMAGE_FILES = ["./hand_img3.jpg"]
 with mp_hands.Hands(
     static_image_mode=True,
     max_num_hands=2,
@@ -127,54 +140,27 @@ with mp_hands.Hands(
     if not results.multi_hand_landmarks:
       continue
     image_height, image_width, _ = image.shape
-    annotated_image = image.copy()
+    image_o = image.copy()
     img_test = image.copy()
     
     hand_cnt = 0
     for hand_landmarks in results.multi_hand_landmarks:
-      '''
-      print('hand_landmarks:', hand_landmarks)
-      
-      print(type(mp_hands.HandLandmark.INDEX_FINGER_TIP))
-      print(
-          f'Index finger tip coordinates: (',
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].x * image_width}, '
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_TIP].y * image_height})'
-      )
-      print(
-          f'index finger dip coordinates: (',
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_DIP].x * image_width}, '
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.INDEX_FINGER_DIP].y * image_height})'
-      )
-      
-      print(
-          f'Index finger tip coordinates: (',
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP].x * image_width}, '
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_TIP].y * image_height})'
-      )
-      print(
-          f'index finger dip coordinates: (',
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_DIP].x * image_width}, '
-          f'{hand_landmarks.landmark[mp_hands.HandLandmark.MIDDLE_FINGER_DIP].y * image_height})'
-      )
-      '''
-      
-      
+
       # detecting finter_tips 
       finger_tip_coord = []
       finger_dip_coord = []
       for i in finger_dip:
-          itx_ = hand_landmarks.landmark[i + 1].x * image_width
-          ity_ = hand_landmarks.landmark[i + 1].y * image_height
-          idx_ = hand_landmarks.landmark[i].x * image_width
-          idy_ = hand_landmarks.landmark[i].y * image_height
-          '''
-          color = ( 255,0,0)
-          img_test = cv2.line(img_test,(int(idx_),int(idy_)),(int(itx_),int(ity_)),color,5)
-          '''
-          # detection finger_fold
-          finger_tip_coord.append([itx_,ity_])
-          finger_dip_coord.append([idx_,idy_])
+        itx_ = hand_landmarks.landmark[i + 1].x * image_width
+        ity_ = hand_landmarks.landmark[i + 1].y * image_height
+        idx_ = hand_landmarks.landmark[i].x * image_width
+        idy_ = hand_landmarks.landmark[i].y * image_height
+        '''
+        color = ( 255,0,0)
+        img_test = cv2.line(img_test,(int(idx_),int(idy_)),(int(itx_),int(ity_)),color,5)
+        '''
+        # detection finger_fold
+        finger_tip_coord.append([itx_,ity_])
+        finger_dip_coord.append([idx_,idy_])
       
       
           
@@ -182,10 +168,10 @@ with mp_hands.Hands(
       # detectng palm
       palm_point_coordinate = [];
       for i in palm_point:
-          temp = []
-          temp.append(hand_landmarks.landmark[i].x * image_width)
-          temp.append(hand_landmarks.landmark[i].y * image_height)
-          palm_point_coordinate.append(temp)
+        temp = []
+        temp.append(hand_landmarks.landmark[i].x * image_width)
+        temp.append(hand_landmarks.landmark[i].y * image_height)
+        palm_point_coordinate.append(temp)
           
       hand_ = MessageToDict(results.multi_handedness[hand_cnt])['classification'][0]['index']
       
@@ -197,37 +183,37 @@ with mp_hands.Hands(
       차후 손바닥 여부를 판단하여 해당 손을 blur처리 할 것인지 결정한다. 
       또한 손가락의 접힘 정도를 판단하여 blur처리를 하지 않아야할 손가락 또한 구별할 것이다. 
       '''
-      if(front == 0):       # 손바닥 앞면 구분
-          color = (255,102,165) # 손등인경우 
-      else :
-          color = (61,61,204)   # 손바닥인 경우
+      if(front == 1):       # 손바닥 앞면 구분
+        color = (255,102,165) # 손바닥인경우
+        finger_folded = foldedFinger(np.array(finger_tip_coord), np.array(finger_dip_coord),np.array(palm_point_coordinate[0]))
 
-      finger_folded = foldedFinger(np.array(finger_tip_coord), np.array(finger_dip_coord),np.array(palm_point_coordinate[0]))
+        finger_folded[0] = thumb_folded(np.array(palm_point_coordinate), hand_, np.array(finger_tip_coord[0]),np.array(finger_dip_coord[0]))
+        print(finger_folded)
 
-      finger_folded[0] = thumb_folded(np.array(palm_point_coordinate), hand_, np.array(finger_tip_coord[0]),np.array(finger_dip_coord[0]))
-      print(finger_folded)
-      
-      # 테스트용 이미지 그림 
-      img_test = cv2.line(img_test,(int(palm_point_coordinate[0][0]),int(palm_point_coordinate[0][1])),(int(palm_point_coordinate[1][0]),int(palm_point_coordinate[1][1])),color, 5)
-      img_test = cv2.line(img_test,(int(palm_point_coordinate[2][0]),int(palm_point_coordinate[2][1])),(int(palm_point_coordinate[1][0]),int(palm_point_coordinate[1][1])),color, 5)
-      img_test = cv2.line(img_test,(int(palm_point_coordinate[3][0]),int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[0][0]),int(palm_point_coordinate[0][1])),color, 5)
-      img_test = cv2.line(img_test,(int(palm_point_coordinate[3][0]),int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[2][0]),int(palm_point_coordinate[2][1])),color, 5)
-      
-      
-      temp_tip = np.array(finger_tip_coord,dtype=int)
-      temp_dip = np.array(finger_dip_coord,dtype=int)
-      #손가락 굽힘 확인
+        # 테스트용 이미지 그림
+        '''
+        img_test = cv2.line(img_test, (int(palm_point_coordinate[0][0]), int(palm_point_coordinate[0][1])),(int(palm_point_coordinate[1][0]), int(palm_point_coordinate[1][1])), color, 5)
+        img_test = cv2.line(img_test, (int(palm_point_coordinate[2][0]), int(palm_point_coordinate[2][1])),(int(palm_point_coordinate[1][0]), int(palm_point_coordinate[1][1])), color, 5)
+        img_test = cv2.line(img_test, (int(palm_point_coordinate[3][0]), int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[0][0]), int(palm_point_coordinate[0][1])), color, 5)
+        img_test = cv2.line(img_test, (int(palm_point_coordinate[3][0]), int(palm_point_coordinate[3][1])),(int(palm_point_coordinate[2][0]), int(palm_point_coordinate[2][1])), color, 5)
+        '''
+        temp_tip = np.array(finger_tip_coord, dtype=int)
+        temp_dip = np.array(finger_dip_coord, dtype=int)
+        # 손가락 굽힘 확인
 
+        for i, ff in enumerate(finger_folded):
+          if (ff):  # 손가락 굽힘
+            color = (0, 153, 0)
+          else:  # 안굽힘
+            color = (0, 0, 0)
+            img = draw_ellipse(img_test, (temp_tip[i][0], temp_tip[i][1]), (temp_dip[i][0], temp_dip[i][1]),color)
 
-      for i , ff in enumerate(finger_folded):
-          if(ff):   #손가락 굽힘
-              color = (0,153,0)
-          else:     #안굽힘
-              color = (255, 128, 0)
-              #color = (0,0,0)
-        
-          img_test = cv2.line(img_test,(temp_tip[i][0],temp_tip[i][1]),(temp_dip[i][0],temp_dip[i][1]),color,5)
-          #img_test = draw_ellipse(img_test,(temp_tip[i][0],temp_tip[i][1]),(temp_dip[i][0],temp_dip[i][1]),color)
+        final_img = finger_print_blur(image_o,img)
+
+                # color = (0,0,0)
+
+            #img_test = cv2.line(img_test, (temp_tip[i][0], temp_tip[i][1]), (temp_dip[i][0], temp_dip[i][1]), color, 5)
+
       '''
       cv2.imshow('test',img_test)
       cv2.waitKey(0)
@@ -245,6 +231,8 @@ with mp_hands.Hands(
         './' + str(idx) + '.png', cv2.flip(annotated_image, 1))
     '''
     cv2.imwrite(
-        './img_res/' + str(idx)+'_' + '.png', cv2.flip(img_test, 1))
-    
+        './img_res/' + str(idx)+'_final' + '.png', cv2.flip(final_img, 1))
+    cv2.imwrite(
+        './img_res/' + str(idx) + '_ellipes' + '.png', cv2.flip(img, 1))
+
     

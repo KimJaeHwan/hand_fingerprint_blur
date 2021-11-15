@@ -9,6 +9,7 @@ import cv2
 import mediapipe as mp
 import math
 import numpy as np
+import os
 from google.protobuf.json_format import MessageToDict
 
 
@@ -122,7 +123,14 @@ def draw_ellipse(image, coord_tip, coord_dip, color):
 
 
 # For static images:
-IMAGE_FILES = ["./hand_img3.jpg","./hand_img4.jpg","./hand_img6.jpg","./hand_img5.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
+img_input_dir = './img_input/'
+img_path_list = os.listdir(img_input_dir)
+IMAGE_FILES = []
+
+for p in img_path_list:
+    IMAGE_FILES.append(os.path.join(img_input_dir, p))
+
+#IMAGE_FILES = ["./hand_img3.jpg","./hand_img4.jpg","./hand_img6.jpg","./hand_img5.jpg","./hand2_img.jpg","./hand2_img2.jpg"]
 #IMAGE_FILES = ["./hand_img3.jpg"]
 with mp_hands.Hands(
     static_image_mode=True,
